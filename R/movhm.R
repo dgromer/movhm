@@ -18,7 +18,7 @@ movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
                   print = FALSE)
 {
   # Create raster data frame for each Ss
-  raster <- lapply(l, nonameyet, blocksize = blocksize, margins = margins,
+  raster <- lapply(l, count.pos, blocksize = blocksize, margins = margins,
                    consider.time = consider.time)
   
   # Summarise all raster data frames
@@ -197,7 +197,7 @@ show.me.da.raster <- function(template, margins, blocksize, roi = NULL)
 # roi.cells.visited <- function(x, roi, margins, blocksize)
 # {
 #   # Compute raster data frame for Ss
-#   raster <- nonameyet(x, blocksize = blocksize, margins = margins)
+#   raster <- count.pos(x, blocksize = blocksize, margins = margins)
 #   
 #   # Count number of cells which occur in both roi and raster w/ f == 1
 #   nrow(inner_join(roi, filter(raster, f == 1)))
@@ -214,7 +214,7 @@ roi.analysis <- function(..., roi, blocksize, margins)
   
   lapply(objects, sapply, function(x) {
     # Compute raster data frame for Ss
-    raster <- nonameyet(x, blocksize = blocksize, margins = margins)
+    raster <- count.pos(x, blocksize = blocksize, margins = margins)
     
     # Count number of cells which occur in both roi and raster w/ f == 1
     nrow(inner_join(roi, filter(raster, f == 1)))
