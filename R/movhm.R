@@ -14,6 +14,26 @@ scale_RdBu <- colorRampPalette(brewer.pal(9, "RdBu"))(100)
 
 scale_Spectral <- colorRampPalette(brewer.pal(9, "Spectral"))(100)
 
+#' Create a heatmap based on movement data
+#' 
+#' @param l A list of data frames containing columns for x- and y-values
+#' @param blocksize Scaling factor
+#' @param margins numeric vector of length 4 containing the margins (xmin, ymin, xmax, ymax)
+#' @param origin (optional) numeric vector of length 2 (x and y) of the position to be removed from the heatmap (e.g. starting position)
+#' @param consider.time logical indicating whether to count one Ss multiple times in one cell
+#' @param print logical indicating if output should be printed via ggplot
+#' @return A data frame with x, y and f (freqency) columns ready for plotting with ggplot2
+#' @example
+#' \dontrun{
+#' data <- movhm(mylist, blocksize = 50, margins = c(0, 0, 2000, 300),
+#'               origin = c(1200, 100))
+#'               
+#' ggplot(data, aes(x, y, fill = f)) +
+#'   geom_raster() +
+#'   coord_fixed() +
+#'   theme_movhm()
+#' }
+
 movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
                   print = FALSE)
 {
