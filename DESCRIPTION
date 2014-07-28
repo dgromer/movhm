@@ -1,0 +1,12 @@
+Package: movhm
+Type: Package
+Title: Functions for displaying movement data of groups as heatmaps.
+Version: 1.0
+Date: 2014-07-28
+Author: Daniel Gromer, Max Kinateder
+Maintainer: Daniel Gromer <daniel.gromer at uni-wuerzburg.de>
+Depends: R (>= 3.0.0)
+Imports: dplyr (>= 0.2), ggplot2 (>= 0.9.3), RColorBrewer
+Description: More about what it does (maybe more than one line)
+License: GPL (>= 2)
+URL: http://github.com/dgromer/movhm
