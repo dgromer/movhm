@@ -1,43 +1,36 @@
-library(dplyr)
-library(ggplot2)
-library(RColorBrewer)
-
-scale_RdGrBu <- colorRampPalette(
-  c("#1639fa", "#2150fa", "#3275fb", "#459afb", "#55befb", "#67e1fc", "#72faf5",
-    "#72f8d2", "#72f7ad", "#70f55f", "#70f55f", "#70f538", "#74f52f", "#86f631",
-    "#9ff633", "#bbf835", "#d9f938", "#f6fa3b", "#fae238", "#f5be31", "#f19b2c",
-    "#ee7627", "#ec5223",  "#eb3b22"))(100)
-
-scale_Blues <- colorRampPalette(brewer.pal(9, "Blues"), bias = 1.5)(100)
-
-scale_RdBu <- colorRampPalette(brewer.pal(9, "RdBu"))(100)
-
-scale_Spectral <- colorRampPalette(brewer.pal(9, "Spectral"))(100)
-
 #' Create a heatmap based on movement data
+#' 
+#' @import dplyr
+#' @import ggplot2
 #' 
 #' @param l A list of data frames containing columns for x- and y-values
 #' @param blocksize Scaling factor
-#' @param margins numeric vector of length 4 containing the margins (xmin, ymin, xmax, ymax)
-#' @param origin (optional) numeric vector of length 2 (x and y) of the position to be removed from the heatmap (e.g. starting position)
-#' @param consider.time logical indicating whether to count one Ss multiple times in one cell
+#' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
+#'   xmax, ymax)
+#' @param origin (optional) numeric vector of length 2 (x and y) of the position
+#'   to be removed from the heatmap (e.g. starting position)
+#' @param consider.time logical indicating whether to count one subject multiple
+#'   times in one cell
+#' @param logical indicating whether to recode unvisited cells to NA (default is
+#'   TRUE)
 #' @param print logical indicating if output should be printed via ggplot
-#' @return A data frame with x, y and f (freqency) columns ready for plotting with ggplot2
-#' @example
+#' @return A data frame with x, y and f (freqency) columns ready for plotting
+#'   with ggplot2
+#' @export
+#' @examples
 #' \dontrun{
-#' data <- movhm(mylist, blocksize = 50, margins = c(0, 0, 2000, 300),
-#'               origin = c(1200, 100))
-#'               
-#' ggplot(data, aes(x, y, fill = f)) +
+#' movhm(mylist, blocksize = 50, margins = c(0, 0, 2000, 300),
+#'       origin = c(1200, 100)) %>%        
+#'   ggplot(aes(x, y, fill = f)) +
 #'   geom_raster() +
+#'   scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
 #'   coord_fixed() +
 #'   theme_movhm()
 #' }
-
 movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
-                  print = FALSE)
+                  zero.to.na = TRUE, print = FALSE)
 {
-  # Create raster data frame for each Ss
+  # Create raster data frame for each subject
   raster <- lapply(l, count.pos, blocksize = blocksize, margins = margins,
                    consider.time = consider.time)
   
@@ -45,13 +38,23 @@ movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
   raster <- Reduce(function(x, y){ x$f <- x$f + y$f; return(x) }, raster)
   
   # Set cells with zero visits to NA (to plot these cells transparent)
-  raster[raster$f == 0, "f"] <- NA
+  if (zero.to.na)
+  {
+    raster[raster$f == 0, "f"] <- NA
+  }
   
-  # Set start position to NA
+  # Set start position to NA or 0
   if (!is.null(origin))
   {
-    raster[raster$x == origin[1] / blocksize &
-             raster$y == origin[2] / blocksize, "f"] <- NA
+    if (zero.to.na)
+    {
+      raster[raster$x == origin[1] / blocksize &
+               raster$y == origin[2] / blocksize, "f"] <- NA
+    } else
+    {
+      raster[raster$x == origin[1] / blocksize &
+               raster$y == origin[2] / blocksize, "f"] <- 0
+    }
   }
   
   if (print)
@@ -68,26 +71,60 @@ movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
   }
 }
 
+#' Create a difference heatmap based on movement data
+#' 
+#' @import dplyr
+#' @import ggplot2
+#' 
+#' @param lx a list of data frames containing columns for x- and y-values
+#' @param ly a list of data frames containing columns for x- and y-values
+#' @param difference a character string specifying whether to compute
+#'   \code{"relative"} (default) or \code{"absolute"} differences.
+#' @param blocksize scaling factor
+#' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
+#'   xmax, ymax)
+#' @param origin (optional) numeric vector of length 2 (x and y) of the position
+#'   to be removed from the heatmap (e.g. starting position)
+#' @param consider.time logical indicating whether to count one subject multiple
+#'   times in one cell
+#' @param print logical indicating if output should be printed via ggplot
+#' @return A data frame with x, y and f (freqency) columns ready for plotting
+#'   with ggplot2
+#' @export
+#' @examples
+#' \dontrun{
+#' movhm(mylist.a, mylist.b, blocksize = 50, margins = c(0, 0, 2000, 300),
+#'       origin = c(1200, 100)) %>%        
+#'   ggplot(aes(x, y, fill = f)) +
+#'   geom_raster() +
+#'   scale_fill_gradientn(colours = scale_RdBu, na.value = rgb(0, 0, 0, 0)) +
+#'   coord_fixed() +
+#'   theme_movhm()
+#' }
 movhm.diff <- function(lx, ly, difference = "relative", blocksize, margins,
                        origin = NULL, consider.time = FALSE, print = FALSE)
 {
   raster.x <- movhm(lx, blocksize = blocksize, margins = margins,
-                    origin = origin, consider.time = consider.time)
+                    origin = origin, consider.time = consider.time,
+                    zero.to.na = FALSE)
   raster.y <- movhm(ly, blocksize = blocksize, margins = margins,
-                    origin = origin, consider.time = consider.time)
+                    origin = origin, consider.time = consider.time,
+                    zero.to.na = FALSE)
   
   if (difference == "relative")
   {
-    raster <- raster.x
-    raster$f <- raster.x$f / length(lx) - raster.y$f / length(ly)
+    f <- mapply(function(x, y) ifelse(x == 0 & y == 0, NA, x - y),
+                raster.x$f / length(lx), raster.y$f / length(ly))
   } else if (difference == "absolute")
   {
-    raster <- raster.x
-    raster$f <- raster.x$f <- raster.y$f
+    f <- mapply(function(x, y) ifelse(x == 0 & y == 0, NA, x - y), raster.x$f,
+                raster.y$f)
   } else
   {
     stop("Invalid input for parameter difference.")
   }
+  
+  raster <- data.frame(x = raster.x$x, y = raster.x$y, f = f)
   
   if (print)
   {
@@ -104,19 +141,52 @@ movhm.diff <- function(lx, ly, difference = "relative", blocksize, margins,
   }
 }
 
+#' Count occurrences in position raster
+#' 
+#' @import dplyr
+#' 
+#' @param x a data frame containing columns for x- and y-values
+#' @param blocksize scaling factor
+#' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
+#'   xmax, ymax)
+#' @param consider.time logical indicating whether to count one subject multiple
+#'   times in one cell
+#' @return A data frame with x, y and f (freqency) columns
+#' @export
 count.pos <- function(x, blocksize, margins, consider.time = FALSE)
 {
   # Set column names
   names(x) <- c("x", "y")
   
-  # Apply blocksize, round values and delete values out of borders
-  data <- round(x / blocksize) %>%
-    filter(x > margins[1] / blocksize, x < margins[3] / blocksize,
-           y > margins[2] / blocksize, y < margins[4] / blocksize)
+  # Number of decimal places for rounding
+  decpl <- ifelse(!grepl("\\.", as.character(blocksize)), 0,
+                  nchar(gsub("(.*\\.)|([0]*$)", "", as.character(blocksize))))
+  
+  # Apply blocksize and round values
+  if (blocksize < 1)
+  {
+    data <- round(x, decpl)
+  } else
+  {
+    data <- round(x / blocksize, decpl)
+  }
+  
+  # Delete values out of borders
+  if (blocksize < 1)
+  {
+    data <- data %>%
+      filter(x > round(margins[1], decpl), x < round(margins[3], decpl),
+             y > round(margins[2], decpl), y < round(margins[4], decpl))
+  } else
+  {
+    data <- data %>%
+      filter(x > margins[1] / blocksize, x < margins[3] / blocksize,
+             y > margins[2] / blocksize, y < margins[4] / blocksize)
+  }
   
   if (consider.time)
   {
-    # Count the number of times Ss was in each cell
+    # Count the number of times subject was in each cell
     data <- data %>%
       group_by(x, y) %>%
       summarize(f = n())
@@ -129,13 +199,24 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
   }
   
   # Create an empty data frame for raster values
-  raster <- expand.grid(
-    list(x = seq(margins[1] / blocksize, margins[3] / blocksize),
-         y = seq(margins[2] / blocksize, margins[4] / blocksize))
-  )
+  if (blocksize < 1)
+  {
+    raster <- expand.grid(
+      list(x = round(seq(round(margins[1], decpl), round(margins[3], decpl),
+                         blocksize), decpl),
+           y = round(seq(round(margins[2], decpl), round(margins[4], decpl),
+                         blocksize), decpl))
+    )
+  } else
+  {
+    raster <- expand.grid(
+      list(x = seq(margins[1] / blocksize, margins[3] / blocksize),
+           y = seq(margins[2] / blocksize, margins[4] / blocksize))
+    )
+  }
   
   # Add values to raster data frame
-  raster <- merge(raster, data, all = TRUE)
+  raster <- merge(raster, data, all.x = TRUE)
   
   # Set NA to 0 (is needed to summarise multiple raster data frames)
   raster[is.na(raster$f), "f"] <- 0
@@ -144,6 +225,11 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
   raster
 }
 
+#' A blank theme for heatmaps
+#' 
+#' @param base_size base font size
+#' @param base_family base font family
+#' @export
 theme_movhm <- function (base_size = 12, base_family = "")
 {
   theme_bw(base_size = base_size, base_family = base_family) %+replace%
@@ -155,11 +241,17 @@ theme_movhm <- function (base_size = 12, base_family = "")
           panel.border = element_blank())
 }
 
-# template  a ggplot2 object
-# margins   margins of plot
-# blocksize side length of blocks (default: 50)
-# roi       a data-frame containing roi specification (optional)
-show.me.da.raster <- function(template, margins, blocksize, roi = NULL)
+#' Display the grid for roi analysis
+#' 
+#' @param template a list of ggplot2-geoms which will be plotted in the
+#'   background.
+#' @param blocksize scaling factor
+#' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
+#'   xmax, ymax)
+#' @param roi a two-column data frame with x- and y-values specifying what cells
+#'   should be included in the ROI.
+#' @export
+show.me.da.raster <- function(template, blocksize, margins, roi = NULL)
 {
   # dirty workaround here: we put x.max, y.max and roi into the global
   # environment because that's where ggplot's aes looks for them
@@ -213,16 +305,15 @@ show.me.da.raster <- function(template, margins, blocksize, roi = NULL)
   print(p)
 }
 
-# # berechnet in wie vielen zellen der roi sich eine person aufgehalten hat
-# roi.cells.visited <- function(x, roi, margins, blocksize)
-# {
-#   # Compute raster data frame for Ss
-#   raster <- count.pos(x, blocksize = blocksize, margins = margins)
-#   
-#   # Count number of cells which occur in both roi and raster w/ f == 1
-#   nrow(inner_join(roi, filter(raster, f == 1)))
-# }
-
+#' Execute a ROI analysis on movement data
+#' 
+#' @param ... lists of two-column data frames with x- and y-values
+#' @param roi a two-column data frame with x- and y-values specifying what cells
+#'   should be included in the ROI.
+#' @param blocksize scaling factor
+#' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
+#'   xmax, ymax)
+#' @export
 roi.analysis <- function(..., roi, blocksize, margins)
 {
   objects <- list(...)
@@ -237,6 +328,54 @@ roi.analysis <- function(..., roi, blocksize, margins)
     raster <- count.pos(x, blocksize = blocksize, margins = margins)
     
     # Count number of cells which occur in both roi and raster w/ f == 1
-    nrow(inner_join(roi, filter(raster, f == 1)))
+    nrow(merge(roi, filter(raster, f == 1)))
   })
 }
+
+#' Colour gradients
+#' 
+#' @description
+#' These colour gradients are used in conjunction with ggplot2's
+#' \code{scale_fill_gradientn()}. Available gradients are
+#' 
+#' \describe{
+#'   \item{\code{scale_Blues}}{
+#'   A colour gradient for heatmaps, from white to blue
+#'   }
+#'   \item{\code{scale_RdGrBu}}{
+#'   A colour gradient for difference heatmaps, from red over green to blue
+#'   }
+#'   \item{\code{scale_RdBu}}{
+#'   A colour gradient for difference heatmaps, from red over white to blue
+#'   }
+#'   \item{\code{scale_Spectral}}{
+#'   A colour gradient for difference heatmaps, from red over yellow to blue
+#'   }
+#' }
+#' 
+#' @seealso \code{\link{scale_fill_gradientn}}
+#' 
+#' @name movhmcolgradients
+NULL
+
+#' @export
+#' @rdname movhmcolgradients
+scale_RdGrBu <- colorRampPalette(
+  c("#1639fa", "#2150fa", "#3275fb", "#459afb", "#55befb", "#67e1fc", "#72faf5",
+    "#72f8d2", "#72f7ad", "#70f55f", "#70f55f", "#70f538", "#74f52f", "#86f631",
+    "#9ff633", "#bbf835", "#d9f938", "#f6fa3b", "#fae238", "#f5be31", "#f19b2c",
+    "#ee7627", "#ec5223",  "#eb3b22"))(100)
+
+#' @export
+#' @rdname movhmcolgradients
+scale_Blues <- colorRampPalette(brewer.pal(9, "Blues"), bias = 1.5)(100)
+
+#' @import RColorBrewer
+#' @export
+#' @rdname movhmcolgradients
+scale_RdBu <- colorRampPalette(brewer.pal(9, "RdBu"))(100)
+
+#' @import RColorBrewer
+#' @export
+#' @rdname movhmcolgradients
+scale_Spectral <- colorRampPalette(brewer.pal(9, "Spectral"))(100)
