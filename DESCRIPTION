@@ -11,6 +11,8 @@ Imports:
     dplyr (>= 0.2),
     ggplot2 (>= 0.9.3),
     RColorBrewer
-Description: This package provides functions that allow graphical and inferential analysis of movement data, such as human evacuation behavior in safety science.
+Description: This package provides functions that allow graphical and
+    inferential analysis of movement data, such as human evacuation behavior in
+    safety science.
 License: GPL (>= 2)
 URL: http://github.com/dgromer/movhm
