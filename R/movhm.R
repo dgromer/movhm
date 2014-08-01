@@ -11,8 +11,8 @@
 #'   to be removed from the heatmap (e.g. starting position)
 #' @param consider.time logical indicating whether to count one subject multiple
 #'   times in one cell
-#' @param logical indicating whether to recode unvisited cells to NA (default is
-#'   TRUE)
+#' @param zero.to.na logical indicating whether to recode unvisited cells to NA
+#'   (default is TRUE)
 #' @param print logical indicating if output should be printed via ggplot
 #' @return A data frame with x, y and f (freqency) columns ready for plotting
 #'   with ggplot2
@@ -210,8 +210,10 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
   } else
   {
     raster <- expand.grid(
-      list(x = seq(margins[1] / blocksize, margins[3] / blocksize),
-           y = seq(margins[2] / blocksize, margins[4] / blocksize))
+      list(x = seq(round(margins[1] / blocksize),
+                   round(margins[3] / blocksize)),
+           y = seq(round(margins[2] / blocksize),
+                   round(margins[4] / blocksize)))
     )
   }
   

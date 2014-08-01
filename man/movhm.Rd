@@ -20,8 +20,8 @@ to be removed from the heatmap (e.g. starting position)}
 \item{consider.time}{logical indicating whether to count one subject multiple
 times in one cell}
 
-\item{logical}{indicating whether to recode unvisited cells to NA (default is
-TRUE)}
+\item{zero.to.na}{logical indicating whether to recode unvisited cells to NA
+(default is TRUE)}
 
 \item{print}{logical indicating if output should be printed via ggplot}
 }
