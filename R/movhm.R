@@ -1,5 +1,6 @@
 #' Create a heatmap based on movement data
 #' 
+#' @importFrom plyr round_any
 #' @import dplyr
 #' @import ggplot2
 #' 
@@ -46,14 +47,20 @@ movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
   # Set start position to NA or 0
   if (!is.null(origin))
   {
-    if (zero.to.na)
+    if (blocksize < 1)
     {
-      raster[raster$x == origin[1] / blocksize &
-               raster$y == origin[2] / blocksize, "f"] <- NA
+      origin <- round_any(origin, blocksize)
     } else
     {
-      raster[raster$x == origin[1] / blocksize &
-               raster$y == origin[2] / blocksize, "f"] <- 0
+      origin <- round(origin / blocksize)
+    }
+    
+    if (zero.to.na)
+    {
+      raster[raster$x == origin[1] & raster$y == origin[2], "f"] <- NA
+    } else
+    {
+      raster[raster$x == origin[1] & raster$y == origin[2], "f"] <- 0
     }
   }
   
@@ -143,6 +150,7 @@ movhm.diff <- function(lx, ly, difference = "relative", blocksize, margins,
 
 #' Count occurrences in position raster
 #' 
+#' @importFrom plyr round_any
 #' @import dplyr
 #' 
 #' @param x a data frame containing columns for x- and y-values
@@ -158,31 +166,23 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
   # Set column names
   names(x) <- c("x", "y")
   
-  # Number of decimal places for rounding
-  decpl <- ifelse(!grepl("\\.", as.character(blocksize)), 0,
-                  nchar(gsub("(.*\\.)|([0]*$)", "", as.character(blocksize))))
-  
-  # Apply blocksize and round values
+  # Apply blocksize and round to margins and values
   if (blocksize < 1)
   {
-    data <- round(x, decpl)
+    margins <- round_any(margins, blocksize)
+    
+    data <- data.frame(x = round_any(x$x, blocksize),
+                       y = round_any(x$y, blocksize))
   } else
   {
-    data <- round(x / blocksize, decpl)
+    margins <- round(margins / blocksize)
+    
+    data <- round(x / blocksize)
   }
   
   # Delete values out of borders
-  if (blocksize < 1)
-  {
-    data <- data %>%
-      filter(x > round(margins[1], decpl), x < round(margins[3], decpl),
-             y > round(margins[2], decpl), y < round(margins[4], decpl))
-  } else
-  {
-    data <- data %>%
-      filter(x > margins[1] / blocksize, x < margins[3] / blocksize,
-             y > margins[2] / blocksize, y < margins[4] / blocksize)
-  }
+  data <- data %>%
+    filter(x > margins[1], x < margins[3], y > margins[2], y < margins[4])  
   
   if (consider.time)
   {
@@ -201,20 +201,12 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
   # Create an empty data frame for raster values
   if (blocksize < 1)
   {
-    raster <- expand.grid(
-      list(x = round(seq(round(margins[1], decpl), round(margins[3], decpl),
-                         blocksize), decpl),
-           y = round(seq(round(margins[2], decpl), round(margins[4], decpl),
-                         blocksize), decpl))
-    )
+    raster <- expand.grid(list(x = seq(margins[1], margins[3], blocksize),
+                               y = seq(margins[2], margins[4], blocksize)))
   } else
   {
-    raster <- expand.grid(
-      list(x = seq(round(margins[1] / blocksize),
-                   round(margins[3] / blocksize)),
-           y = seq(round(margins[2] / blocksize),
-                   round(margins[4] / blocksize)))
-    )
+    raster <- expand.grid(list(x = seq(margins[1], margins[3]),
+                               y = seq(margins[2], margins[4])))
   }
   
   # Add values to raster data frame
@@ -368,6 +360,7 @@ scale_RdGrBu <- colorRampPalette(
     "#9ff633", "#bbf835", "#d9f938", "#f6fa3b", "#fae238", "#f5be31", "#f19b2c",
     "#ee7627", "#ec5223",  "#eb3b22"))(100)
 
+#' @import RColorBrewer
 #' @export
 #' @rdname movhmcolgradients
 scale_Blues <- colorRampPalette(brewer.pal(9, "Blues"), bias = 1.5)(100)
