@@ -201,8 +201,12 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
   # Create an empty data frame for raster values
   if (blocksize < 1)
   {
-    raster <- expand.grid(list(x = seq(margins[1], margins[3], blocksize),
-                               y = seq(margins[2], margins[4], blocksize)))
+    raster <- expand.grid(
+      list(
+        x = round_any(seq(margins[1], margins[3], blocksize), blocksize),
+        y = round_any(seq(margins[2], margins[4], blocksize), blocksize)
+      )
+    )
   } else
   {
     raster <- expand.grid(list(x = seq(margins[1], margins[3]),
