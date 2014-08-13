@@ -214,7 +214,7 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
   }
   
   # Add values to raster data frame
-  raster <- merge(raster, data, all.x = TRUE)
+  raster <- left_join(raster, data, by = c("x", "y"))
   
   # Set NA to 0 (is needed to summarise multiple raster data frames)
   raster[is.na(raster$f), "f"] <- 0
@@ -305,6 +305,9 @@ show.me.da.raster <- function(template, blocksize, margins, roi = NULL)
 
 #' Execute a ROI analysis on movement data
 #' 
+#' @importFrom plyr round_any
+#' @import dplyr
+#' 
 #' @param ... lists of two-column data frames with x- and y-values
 #' @param roi a two-column data frame with x- and y-values specifying what cells
 #'   should be included in the ROI.
@@ -321,12 +324,16 @@ roi.analysis <- function(..., roi, blocksize, margins)
     stop("You need to specify at least one list of data frames to ...")
   }
   
+  # Round roi values due to R's problems with numeric values (see FAQ 7.31)
+  roi$x <- round_any(roi$x, blocksize)
+  roi$y <- round_any(roi$y, blocksize)
+  
   lapply(objects, sapply, function(x) {
     # Compute raster data frame for Ss
     raster <- count.pos(x, blocksize = blocksize, margins = margins)
     
     # Count number of cells which occur in both roi and raster w/ f == 1
-    nrow(merge(roi, filter(raster, f == 1)))
+    nrow(inner_join(roi, filter(raster, f == 1), by = c("x", "y")))
   })
 }
 
