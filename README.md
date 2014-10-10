@@ -1,6 +1,6 @@
 # movhm
 
-A R package for displaying and analyzing group movement data from e.g. evacuation research or virtual reality studies.
+An R package for displaying and analyzing group movement data from e.g. evacuation research or virtual reality studies.
 
 ## Installation
 
@@ -22,17 +22,16 @@ fn <- list("filename1.txt", "filename2.txt", "filename3.txt")
 logfiles <- lapply(fn, read.table, header = TRUE, sep = "\t")
 ```
 
-If your files contain more columns than two columns for position data, use `subset` or `dplyr::select` to get rid of unneeded data
-
-```R
-library(dplyr)
-
-# Select only x and y values (coord_x and coord_y are column names)
-logfiles <- lapply(logfiles, select, coord_x, coord_y)
-```
+## Plot a heatmap
 
 To print a heatmap use `movhm` (see `?movhm` for further information)
 
 ```R
-movhm(logfiles, blocksize = .5, margins = c(-10, -10, 10, 10), print = TRUE)
+# Load example data set
+data(movdat)
+
+# Print a heatmap
+movhm(movdat, x = "cart_x", y = "cart_y", blocksize = 50,
+      margins = c(-750, -2000, 100, 1550), origin = c(-120, -1000),
+	  print = TRUE)
 ```

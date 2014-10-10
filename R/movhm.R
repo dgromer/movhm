@@ -5,35 +5,42 @@
 #' @import ggplot2
 #' 
 #' @param l A list of data frames containing columns for x- and y-values
+#' @param x name of the column containing x-values in the data frames in
+#'   \code{l} (string)
+#' @param y name of the column containing y-values in the data frames in
+#'   \code{l} (string)
 #' @param blocksize Scaling factor
 #' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
 #'   xmax, ymax)
 #' @param origin (optional) numeric vector of length 2 (x and y) of the position
 #'   to be removed from the heatmap (e.g. starting position)
 #' @param consider.time logical indicating whether to count one subject multiple
-#'   times in one cell
+#'   times in one cell, depending on the time the subject was inside the cell.
 #' @param zero.to.na logical indicating whether to recode unvisited cells to NA
 #'   (default is TRUE)
-#' @param print logical indicating if output should be printed via ggplot
+#' @param print logical indicating if output should be printed via \code{ggplot}
 #' @return A data frame with x, y and f (freqency) columns ready for plotting
 #'   with ggplot2
 #' @export
 #' @examples
-#' \dontrun{
-#' movhm(mylist, blocksize = 50, margins = c(0, 0, 2000, 300),
-#'       origin = c(1200, 100)) %>%        
+#' library(dplyr)
+#' library(ggplot2)
+#' 
+#' data(movdat)
+#' 
+#' movhm(movdat, x = "cart_x", y = "cart_y", blocksize = 50,
+#'       margins = c(-750, -2000, 100, 1550), origin = c(-120, -1000)) %>%        
 #'   ggplot(aes(x, y, fill = f)) +
 #'   geom_raster() +
 #'   scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
 #'   coord_fixed() +
 #'   theme_movhm()
-#' }
-movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
-                  zero.to.na = TRUE, print = FALSE)
+movhm <- function(l, x, y, blocksize, margins, origin = NULL,
+                  consider.time = FALSE, zero.to.na = TRUE, print = FALSE)
 {
   # Create raster data frame for each subject
-  raster <- lapply(l, count.pos, blocksize = blocksize, margins = margins,
-                   consider.time = consider.time)
+  raster <- lapply(l, count.pos, x = x, y = y, blocksize = blocksize,
+                   margins = margins, consider.time = consider.time)
   
   # Summarise all raster data frames
   raster <- Reduce(function(x, y){ x$f <- x$f + y$f; return(x) }, raster)
@@ -85,6 +92,10 @@ movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
 #' 
 #' @param lx a list of data frames containing columns for x- and y-values
 #' @param ly a list of data frames containing columns for x- and y-values
+#' @param x name of the column containing x-values in the data frames in
+#'   \code{lx} and \code{ly} (string)
+#' @param y name of the column containing y-values in the data frames in
+#'   \code{lx} and \code{ly} (string)
 #' @param difference a character string specifying whether to compute
 #'   \code{"relative"} (default) or \code{"absolute"} differences.
 #' @param blocksize scaling factor
@@ -93,28 +104,34 @@ movhm <- function(l, blocksize, margins, origin = NULL, consider.time = FALSE,
 #' @param origin (optional) numeric vector of length 2 (x and y) of the position
 #'   to be removed from the heatmap (e.g. starting position)
 #' @param consider.time logical indicating whether to count one subject multiple
-#'   times in one cell
+#'   times in one cell, depending on the time the subject was inside the cell.
 #' @param print logical indicating if output should be printed via ggplot
 #' @return A data frame with x, y and f (freqency) columns ready for plotting
 #'   with ggplot2
 #' @export
 #' @examples
-#' \dontrun{
-#' movhm(mylist.a, mylist.b, blocksize = 50, margins = c(0, 0, 2000, 300),
-#'       origin = c(1200, 100)) %>%        
+#' library(dplyr)
+#' library(ggplot2)
+#' 
+#' data(movdat)
+#' 
+#' movhm.diff(movdat[1:21], movdat[22:42], x = "cart_x", y = "cart_y",
+#'            blocksize = 50,  margins = c(-750, -2000, 100, 1550),
+#'            origin = c(-120, -1000)) %>%        
 #'   ggplot(aes(x, y, fill = f)) +
 #'   geom_raster() +
-#'   scale_fill_gradientn(colours = scale_RdBu, na.value = rgb(0, 0, 0, 0)) +
+#'   scale_fill_gradientn(colours = scale_RdBu, na.value = rgb(0, 0, 0, 0),
+#'                        limits = c(-.4, .4)) +
 #'   coord_fixed() +
 #'   theme_movhm()
-#' }
-movhm.diff <- function(lx, ly, difference = "relative", blocksize, margins,
-                       origin = NULL, consider.time = FALSE, print = FALSE)
+movhm.diff <- function(lx, ly, x, y, difference = "relative", blocksize,
+                       margins, origin = NULL, consider.time = FALSE,
+                       print = FALSE)
 {
-  raster.x <- movhm(lx, blocksize = blocksize, margins = margins,
+  raster.x <- movhm(lx, x = x, y = y, blocksize = blocksize, margins = margins,
                     origin = origin, consider.time = consider.time,
                     zero.to.na = FALSE)
-  raster.y <- movhm(ly, blocksize = blocksize, margins = margins,
+  raster.y <- movhm(ly, x = x, y = y, blocksize = blocksize, margins = margins,
                     origin = origin, consider.time = consider.time,
                     zero.to.na = FALSE)
   
@@ -153,31 +170,35 @@ movhm.diff <- function(lx, ly, difference = "relative", blocksize, margins,
 #' @importFrom plyr round_any
 #' @import dplyr
 #' 
-#' @param x a data frame containing columns for x- and y-values
+#' @param data a data frame containing columns for x- and y-values
+#' @param x name of the column containing x-values (string)
+#' @param y name of the column containing y-values (string)
 #' @param blocksize scaling factor
 #' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
 #'   xmax, ymax)
 #' @param consider.time logical indicating whether to count one subject multiple
 #'   times in one cell
 #' @return A data frame with x, y and f (freqency) columns
-#' @export
-count.pos <- function(x, blocksize, margins, consider.time = FALSE)
+count.pos <- function(.data, x, y, blocksize, margins, consider.time = FALSE)
 {
+  # Subset data
+  tmp <- select_(.data, as.name(x), as.name(y))
+  
   # Set column names
-  names(x) <- c("x", "y")
+  names(tmp) <- c("x", "y")
   
   # Apply blocksize and round to margins and values
   if (blocksize < 1)
   {
     margins <- round_any(margins, blocksize)
     
-    data <- data.frame(x = round_any(x$x, blocksize),
-                       y = round_any(x$y, blocksize))
+    data <- data.frame(x = round_any(tmp$x, blocksize),
+                       y = round_any(tmp$y, blocksize))
   } else
   {
     margins <- round(margins / blocksize)
     
-    data <- round(x / blocksize)
+    data <- round(tmp / blocksize)
   }
   
   # Delete values out of borders
@@ -225,6 +246,8 @@ count.pos <- function(x, blocksize, margins, consider.time = FALSE)
 
 #' A blank theme for heatmaps
 #' 
+#' @import ggplot2
+#' 
 #' @param base_size base font size
 #' @param base_family base font family
 #' @export
@@ -240,6 +263,8 @@ theme_movhm <- function (base_size = 12, base_family = "")
 }
 
 #' Display the grid for roi analysis
+#' 
+#' @import ggplot2
 #' 
 #' @param template a list of ggplot2-geoms which will be plotted in the
 #'   background.
@@ -309,13 +334,17 @@ show.me.da.raster <- function(template, blocksize, margins, roi = NULL)
 #' @import dplyr
 #' 
 #' @param ... lists of two-column data frames with x- and y-values
+#' @param x name of the column containing x-values in the data frames in
+#'   \code{...} (string)
+#' @param y name of the column containing y-values in the data frames in
+#'   \code{...} (string)
 #' @param roi a two-column data frame with x- and y-values specifying what cells
 #'   should be included in the ROI.
 #' @param blocksize scaling factor
 #' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
 #'   xmax, ymax)
 #' @export
-roi.analysis <- function(..., roi, blocksize, margins)
+roi.analysis <- function(..., x, y, roi, blocksize, margins, consider.time)
 {
   objects <- list(...)
   
@@ -328,9 +357,10 @@ roi.analysis <- function(..., roi, blocksize, margins)
   roi$x <- round_any(roi$x, blocksize)
   roi$y <- round_any(roi$y, blocksize)
   
-  lapply(objects, sapply, function(x) {
+  lapply(objects, sapply, function(data) {
     # Compute raster data frame for Ss
-    raster <- count.pos(x, blocksize = blocksize, margins = margins)
+    raster <- count.pos(data, x = x, y = y, blocksize = blocksize,
+                        margins = margins, consider.time = consider.time)
     
     # Count number of cells which occur in both roi and raster w/ f == 1
     nrow(inner_join(roi, filter(raster, f == 1), by = c("x", "y")))
