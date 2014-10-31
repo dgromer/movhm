@@ -16,6 +16,10 @@
 #'   to be removed from the heatmap (e.g. starting position)
 #' @param consider.time logical indicating whether to count one subject multiple
 #'   times in one cell, depending on the time the subject was inside the cell.
+#' @param time.transformation if \code{consider.time} is \code{TRUE}, then
+#'   \code{time.transformation} specifies the function to be applied to the
+#'   position * time frequencies (default is \code{sqrt}). Can also be
+#'   \code{NULL}.
 #' @param zero.to.na logical indicating whether to recode unvisited cells to NA
 #'   (default is TRUE)
 #' @param print logical indicating if output should be printed via \code{ggplot}
@@ -36,11 +40,13 @@
 #'   coord_fixed() +
 #'   theme_movhm()
 movhm <- function(l, x, y, blocksize, margins, origin = NULL,
-                  consider.time = FALSE, zero.to.na = TRUE, print = FALSE)
+                  consider.time = FALSE, time.transformation = sqrt,
+                  zero.to.na = TRUE, print = FALSE)
 {
   # Create raster data frame for each subject
   raster <- lapply(l, count.pos, x = x, y = y, blocksize = blocksize,
-                   margins = margins, consider.time = consider.time)
+                   margins = margins, consider.time = consider.time,
+                   time.transformation = time.transformation)
   
   # Summarise all raster data frames
   raster <- Reduce(function(x, y){ x$f <- x$f + y$f; return(x) }, raster)
@@ -105,6 +111,10 @@ movhm <- function(l, x, y, blocksize, margins, origin = NULL,
 #'   to be removed from the heatmap (e.g. starting position)
 #' @param consider.time logical indicating whether to count one subject multiple
 #'   times in one cell, depending on the time the subject was inside the cell.
+#' @param time.transformation if \code{consider.time} is \code{TRUE}, then
+#'   \code{time.transformation} specifies the function to be applied to the
+#'   position * time frequencies (default is \code{sqrt}). Can also be
+#'   \code{NULL}.
 #' @param print logical indicating if output should be printed via ggplot
 #' @return A data frame with x, y and f (freqency) columns ready for plotting
 #'   with ggplot2
@@ -126,13 +136,15 @@ movhm <- function(l, x, y, blocksize, margins, origin = NULL,
 #'   theme_movhm()
 movhm.diff <- function(lx, ly, x, y, difference = "relative", blocksize,
                        margins, origin = NULL, consider.time = FALSE,
-                       print = FALSE)
+                       time.transformation = sqrt, print = FALSE)
 {
   raster.x <- movhm(lx, x = x, y = y, blocksize = blocksize, margins = margins,
                     origin = origin, consider.time = consider.time,
+                    time.transformation = time.transformation,
                     zero.to.na = FALSE)
   raster.y <- movhm(ly, x = x, y = y, blocksize = blocksize, margins = margins,
                     origin = origin, consider.time = consider.time,
+                    time.transformation = time.transformation,
                     zero.to.na = FALSE)
   
   if (difference == "relative")
@@ -178,8 +190,13 @@ movhm.diff <- function(lx, ly, x, y, difference = "relative", blocksize,
 #'   xmax, ymax)
 #' @param consider.time logical indicating whether to count one subject multiple
 #'   times in one cell
+#' @param time.transformation if \code{consider.time} is \code{TRUE}, then
+#'   \code{time.transformation} specifies the function to be applied to the
+#'   position * time frequencies (default is \code{sqrt}). Can also be
+#'   \code{NULL}.
 #' @return A data frame with x, y and f (freqency) columns
-count.pos <- function(.data, x, y, blocksize, margins, consider.time = FALSE)
+count.pos <- function(.data, x, y, blocksize, margins, consider.time = FALSE,
+                      time.transformation = sqrt)
 {
   # Subset data
   tmp <- select_(.data, as.name(x), as.name(y))
@@ -211,6 +228,12 @@ count.pos <- function(.data, x, y, blocksize, margins, consider.time = FALSE)
     data <- data %>%
       group_by(x, y) %>%
       summarize(f = n())
+    
+    # Apply specified time transformation (default is sqrt)
+    if (!is.null(time.transformation))
+    {
+      data$f <- do.call(time.transformation, list(data$f))
+    }
   } else
   {
     # Extract each cell visited
@@ -343,8 +366,11 @@ show.me.da.raster <- function(template, blocksize, margins, roi = NULL)
 #' @param blocksize scaling factor
 #' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
 #'   xmax, ymax)
+#' @param consider.time logical indicating whether to count one subject multiple
+#'   times in one cell
 #' @export
-roi.analysis <- function(..., x, y, roi, blocksize, margins, consider.time)
+roi.analysis <- function(..., x, y, roi, blocksize, margins,
+                         consider.time = FALSE)
 {
   objects <- list(...)
   
@@ -360,10 +386,21 @@ roi.analysis <- function(..., x, y, roi, blocksize, margins, consider.time)
   lapply(objects, sapply, function(data) {
     # Compute raster data frame for Ss
     raster <- count.pos(data, x = x, y = y, blocksize = blocksize,
-                        margins = margins, consider.time = consider.time)
+                        margins = margins, consider.time = consider.time,
+                        time.transformation = NULL)
     
-    # Count number of cells which occur in both roi and raster w/ f == 1
-    nrow(inner_join(roi, filter(raster, f == 1), by = c("x", "y")))
+    if (consider.time)
+    {
+      # Filter rows which occur in both roi and raster w/ f > 0
+      tpos <- inner_join(roi, filter(raster, f > 0), by = c("x", "y"))
+      
+      # Return sum of time * position frequencies
+      sum(tpos$f)
+    } else
+    {
+      # Count number of cells which occur in both roi and raster w/ f == 1
+      nrow(inner_join(roi, filter(raster, f == 1), by = c("x", "y")))
+    }
   })
 }
 
@@ -383,8 +420,18 @@ roi.analysis <- function(..., x, y, roi, blocksize, margins, consider.time)
 #'   \item{\code{scale_RdBu}}{
 #'   A colour gradient for difference heatmaps, from red over white to blue
 #'   }
+#'   \item{\code{scale_RdBu_bias(bias = 1.5)}}{
+#'   A function for creating a colour gradient for difference heatmaps, from red
+#'   over white to blue (like scale_RdBu). The \code{bias} parameter defines
+#'   how widely the colours space towards both ends.
+#'   }
 #'   \item{\code{scale_Spectral}}{
 #'   A colour gradient for difference heatmaps, from red over yellow to blue
+#'   }
+#'   \item{\code{scale_Spectral_bias(bias = 1.5)}}{
+#'   A function for creating a colour gradient for difference heatmaps, from red
+#'   over yellow to blue (like scale_Spectral). The \code{bias} parameter
+#'   defines how widely the colours space towards both ends.
 #'   }
 #' }
 #' 
@@ -409,9 +456,27 @@ scale_Blues <- colorRampPalette(brewer.pal(9, "Blues"), bias = 1.5)(100)
 #' @import RColorBrewer
 #' @export
 #' @rdname movhmcolgradients
-scale_RdBu <- colorRampPalette(brewer.pal(9, "RdBu"))(100)
+scale_RdBu <- colorRampPalette(brewer.pal(11, "RdBu"))(100)
 
 #' @import RColorBrewer
 #' @export
 #' @rdname movhmcolgradients
-scale_Spectral <- colorRampPalette(brewer.pal(9, "Spectral"))(100)
+scale_RdBu_bias <- function(bias = 1.5)
+{
+  c(rev(colorRampPalette(brewer.pal(9, "Reds"), bias = bias)(50)),
+    colorRampPalette(brewer.pal(9, "Blues"), bias = bias)(50))
+}
+
+#' @import RColorBrewer
+#' @export
+#' @rdname movhmcolgradients
+scale_Spectral <- colorRampPalette(brewer.pal(11, "Spectral"))(100)
+
+#' @import RColorBrewer
+#' @export
+#' @rdname movhmcolgradients
+scale_Spectral_bias <- function(bias = 1.5)
+{
+  c(rev(colorRampPalette(brewer.pal(9, "YlOrRd"), bias = bias)(50)),
+    colorRampPalette(brewer.pal(9, "YlGnBu"), bias = bias)(50))
+}

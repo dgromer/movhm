@@ -3,7 +3,7 @@
 \alias{roi.analysis}
 \title{Execute a ROI analysis on movement data}
 \usage{
-roi.analysis(..., x, y, roi, blocksize, margins, consider.time)
+roi.analysis(..., x, y, roi, blocksize, margins, consider.time = FALSE)
 }
 \arguments{
 \item{...}{lists of two-column data frames with x- and y-values}
@@ -21,6 +21,9 @@ should be included in the ROI.}
 
 \item{margins}{numeric vector of length 4 containing the margins (xmin, ymin,
 xmax, ymax)}
+
+\item{consider.time}{logical indicating whether to count one subject multiple
+times in one cell}
 }
 \description{
 Execute a ROI analysis on movement data

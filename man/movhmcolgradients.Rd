@@ -4,8 +4,10 @@
 \alias{movhmcolgradients}
 \alias{scale_Blues}
 \alias{scale_RdBu}
+\alias{scale_RdBu_bias}
 \alias{scale_RdGrBu}
 \alias{scale_Spectral}
+\alias{scale_Spectral_bias}
 \title{Colour gradients}
 \format{\preformatted{ chr [1:100] "#1639FA" "#183EFA" "#1B43FA" "#1D49FA" "#204EFA" ...
 }}
@@ -16,7 +18,11 @@ scale_Blues
 
 scale_RdBu
 
+scale_RdBu_bias(bias = 1.5)
+
 scale_Spectral
+
+scale_Spectral_bias(bias = 1.5)
 }
 \description{
 These colour gradients are used in conjunction with ggplot2's
@@ -32,8 +38,18 @@ These colour gradients are used in conjunction with ggplot2's
   \item{\code{scale_RdBu}}{
   A colour gradient for difference heatmaps, from red over white to blue
   }
+  \item{\code{scale_RdBu_bias(bias = 1.5)}}{
+  A function for creating a colour gradient for difference heatmaps, from red
+  over white to blue (like scale_RdBu). The \code{bias} parameter defines
+  how widely the colours space towards both ends.
+  }
   \item{\code{scale_Spectral}}{
   A colour gradient for difference heatmaps, from red over yellow to blue
+  }
+  \item{\code{scale_Spectral_bias(bias = 1.5)}}{
+  A function for creating a colour gradient for difference heatmaps, from red
+  over yellow to blue (like scale_Spectral). The \code{bias} parameter
+  defines how widely the colours space towards both ends.
   }
 }
 }

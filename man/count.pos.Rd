@@ -3,7 +3,8 @@
 \alias{count.pos}
 \title{Count occurrences in position raster}
 \usage{
-count.pos(.data, x, y, blocksize, margins, consider.time = FALSE)
+count.pos(.data, x, y, blocksize, margins, consider.time = FALSE,
+  time.transformation = sqrt)
 }
 \arguments{
 \item{x}{name of the column containing x-values (string)}
@@ -17,6 +18,11 @@ xmax, ymax)}
 
 \item{consider.time}{logical indicating whether to count one subject multiple
 times in one cell}
+
+\item{time.transformation}{if \code{consider.time} is \code{TRUE}, then
+\code{time.transformation} specifies the function to be applied to the
+position * time frequencies (default is \code{sqrt}). Can also be
+\code{NULL}.}
 
 \item{data}{a data frame containing columns for x- and y-values}
 }

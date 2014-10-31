@@ -4,7 +4,8 @@
 \title{Create a difference heatmap based on movement data}
 \usage{
 movhm.diff(lx, ly, x, y, difference = "relative", blocksize, margins,
-  origin = NULL, consider.time = FALSE, print = FALSE)
+  origin = NULL, consider.time = FALSE, time.transformation = sqrt,
+  print = FALSE)
 }
 \arguments{
 \item{lx}{a list of data frames containing columns for x- and y-values}
@@ -30,6 +31,11 @@ to be removed from the heatmap (e.g. starting position)}
 
 \item{consider.time}{logical indicating whether to count one subject multiple
 times in one cell, depending on the time the subject was inside the cell.}
+
+\item{time.transformation}{if \code{consider.time} is \code{TRUE}, then
+\code{time.transformation} specifies the function to be applied to the
+position * time frequencies (default is \code{sqrt}). Can also be
+\code{NULL}.}
 
 \item{print}{logical indicating if output should be printed via ggplot}
 }

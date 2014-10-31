@@ -4,7 +4,7 @@
 \title{Create a heatmap based on movement data}
 \usage{
 movhm(l, x, y, blocksize, margins, origin = NULL, consider.time = FALSE,
-  zero.to.na = TRUE, print = FALSE)
+  time.transformation = sqrt, zero.to.na = TRUE, print = FALSE)
 }
 \arguments{
 \item{l}{A list of data frames containing columns for x- and y-values}
@@ -26,6 +26,11 @@ to be removed from the heatmap (e.g. starting position)}
 \item{consider.time}{logical indicating whether to count one subject multiple
 times in one cell, depending on the time the subject was inside the cell.}
 
+\item{time.transformation}{if \code{consider.time} is \code{TRUE}, then
+\code{time.transformation} specifies the function to be applied to the
+position * time frequencies (default is \code{sqrt}). Can also be
+\code{NULL}.}
+
 \item{zero.to.na}{logical indicating whether to recode unvisited cells to NA
 (default is TRUE)}
 
@@ -45,7 +50,7 @@ library(ggplot2)
 data(movdat)
 
 movhm(movdat, x = "cart_x", y = "cart_y", blocksize = 50,
-  margins = c(-750, -2000, 100, 1550), origin = c(-120, -1000)) \%>\%
+      margins = c(-750, -2000, 100, 1550), origin = c(-120, -1000)) \%>\%
   ggplot(aes(x, y, fill = f)) +
   geom_raster() +
   scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
