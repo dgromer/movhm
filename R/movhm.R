@@ -442,11 +442,7 @@ NULL
 
 #' @export
 #' @rdname movhmcolgradients
-scale_RdGrBu <- colorRampPalette(
-  c("#1639fa", "#2150fa", "#3275fb", "#459afb", "#55befb", "#67e1fc", "#72faf5",
-    "#72f8d2", "#72f7ad", "#70f55f", "#70f55f", "#70f538", "#74f52f", "#86f631",
-    "#9ff633", "#bbf835", "#d9f938", "#f6fa3b", "#fae238", "#f5be31", "#f19b2c",
-    "#ee7627", "#ec5223",  "#eb3b22"))(100)
+scale_RdGrBu <- colorRampPalette(rainbow(12, end = .65))(100)
 
 #' @import RColorBrewer
 #' @export
