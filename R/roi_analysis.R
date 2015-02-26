@@ -93,8 +93,11 @@ roi.analysis <- function(..., x, y, roi, blocksize, margins,
   }
   
   # Round roi values due to R's problems with numeric values (see FAQ 7.31)
-  roi$x <- round_any(roi$x, blocksize)
-  roi$y <- round_any(roi$y, blocksize)
+  if (blocksize < 1)
+  {
+    roi$x <- round_any(roi$x, blocksize)
+    roi$y <- round_any(roi$y, blocksize)
+  }
   
   lapply(objects, sapply, function(data) {
     # Compute raster data frame for Ss
