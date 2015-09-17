@@ -1,5 +1,6 @@
 #' Create a heatmap based on movement data
 #' 
+#' @importFrom magrittr %>%
 #' @importFrom plyr round_any
 #' @import dplyr
 #' @import ggplot2
@@ -39,56 +40,53 @@
 #'   scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
 #'   coord_fixed() +
 #'   theme_movhm()
-movhm <- function(l, x, y, blocksize, margins, origin = NULL,
-                  consider.time = FALSE, time.transformation = sqrt,
-                  zero.to.na = TRUE, print = FALSE)
+movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
+                  time = FALSE, time_transform = sqrt)
 {
-  # Create raster data frame for each subject
-  raster <- lapply(l, count.pos, x = x, y = y, blocksize = blocksize,
-                   margins = margins, consider.time = consider.time,
-                   time.transformation = time.transformation)
-  
-  # Summarise all raster data frames
-  raster <- Reduce(function(x, y){ x$f <- x$f + y$f; return(x) }, raster)
-  
-  # Set cells with zero visits to NA (to plot these cells transparent)
-  if (zero.to.na)
+  # Find margins if they were not provided
+  if (is.null(margins))
   {
-    raster[raster$f == 0, "f"] <- NA
+    margins <- map(l, find_margins, x, y) %>%
+      reduce(collapse_margins)
   }
   
-  # Set start position to NA or 0
-  if (!is.null(origin))
+  bins <-
+    l %>%
+    map(bin_2d, x, y, bin_width, margins) %>%
+    map(left_join, y = empty_raster(bin_width, margins), by = c("x", "y")) %>%
+    reduce(collapse_bins)
+  
+  if (drop)
   {
-    if (blocksize < 1)
+    bins[bins[c("f", "b")] == 0] <- NA
+  }
+  
+  if (time)
+  {
+    # Apply specified time transformation (default is sqrt)
+    if (!is.null(time_transform))
     {
-      origin <- round_any(origin, blocksize)
-    } else
-    {
-      origin <- round(origin / blocksize)
-    }
-    
-    if (zero.to.na)
-    {
-      raster[raster$x == origin[1] & raster$y == origin[2], "f"] <- NA
-    } else
-    {
-      raster[raster$x == origin[1] & raster$y == origin[2], "f"] <- 0
+      bins$f <- do.call(time_transform, list(bins$f))
     }
   }
+}
+
+#' @importFrom magrittr %<>%
+bin_2d <- function(.data, x, y, bin_width, margins)
+{
+  .data %<>% filter(between(x, margins[1], margins[3]),
+                    between(y, margins[2], margins[4]))
   
-  if (print)
-  {
-    raster %>%
-      ggplot(aes(x, y, fill = f)) +
-      geom_raster() +
-      scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
-      coord_fixed() +
-      theme_movhm()
-  } else
-  {
-    raster
-  }
+  # Round data to bin width
+  positions <- data.frame(x = round_any(.data[[x]], bin_width),
+                          y = round_any(.data[[y]], bin_width))
+  
+  # Count the number of times the case was in each cell (f) and what cells
+  # were visited (b)
+  positions %>%
+    group_by_(x, y) %>%
+    summarize(f = n()) %>%
+    mutate(b = 1)
 }
 
 #' Create a difference heatmap based on movement data
@@ -265,4 +263,39 @@ count.pos <- function(.data, x, y, blocksize, margins, consider.time = FALSE,
   
   # Return raster data frame
   raster
+}
+
+find_margins <- function(data, x, y)
+{
+  summarise(data, xmin = min(x), ymin = min(y), xmax = max(x), ymax = max(y))
+}
+
+collapse_margins <- function(x, y)
+{
+  data.frame(xmin = min(x[[1]], y[[1]]), ymin = min(x[[2]], y[[2]]),
+             xmax = max(x[[3]], y[[3]]), ymax = max(x[[4]], y[[4]]))
+}
+
+#' @importFrom plyr round_any
+empty_raster <- function(bin_width, margins)
+{
+  expand.grid(
+    list(
+      x = round_any(seq(margins[1], margins[3], bin_width), bin_width),
+      y = round_any(seq(margins[2], margins[4], bin_width), bin_width)
+    )
+  )
+}
+
+collapse_bins <- function(x, y)
+{
+  # Set NAs to 0
+  x[is.na(x[c("f", "b")])] <- 0
+  y[is.na(y[c("f", "b")])] <- 0
+  
+  # Add frequencies
+  x$f <- x$f + y$f
+  x$b <- x$b + y$b
+  
+  x
 }
