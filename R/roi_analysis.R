@@ -1,121 +1,101 @@
-#' Display the grid for roi analysis
+#' ROI Class
 #' 
-#' @import ggplot2
+#' @docType class
+#' @section Methods
+#' \describe{
+#'   \item{\code{add(xmin, ymin, xmax, ymax)}}{Add an area to the ROI}
+#'   \item{\code{plot(bg = NULL)}}{Plot the current ROI (on top of an optional
+#'   background)}
+#' }
+#' @importFrom R6 R6Class
+#' @examples 
+#' # Create a new roi with a bin width of 1
+#' roi <- ROI$new(1)
 #' 
-#' @param template a list of ggplot2-geoms which will be plotted in the
-#'   background.
-#' @param blocksize scaling factor
-#' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
-#'   xmax, ymax)
-#' @param roi a two-column data frame with x- and y-values specifying what cells
-#'   should be included in the ROI.
+#' # Add the area from 0/0 to 2/4 to the ROI and view it
+#' roi$add(0, 0, 2, 4)
+#' roi$plot()
+#' 
+#' # Increase the roi
+#' roi$add(2, 2, 4, 4)
+#' roi$plot()
 #' @export
-show.me.da.raster <- function(template, blocksize, margins, roi = NULL)
+ROI <- R6Class("ROI",
+  public = list(
+   
+   roi = data.frame(x = numeric(0), y = numeric(0)),
+   binwidth = NULL,
+   
+   initialize = function(bin_width)
+   {
+     if (!missing(bin_width)) self$bin_width <- bin_width
+   },
+   
+   # Add a rectangle to the current roi
+   add = function(xmin, ymin, xmax, ymax)
+   {
+     x <- seq(xmin, xmax, self$bin_width)
+     y <- seq(ymin, ymax, self$bin_width)
+     
+     nreg <- data.frame(x = rep(x, each = length(y)), y = rep(y, length(x)))
+     
+     self$roi <- full_join(self$roi, nreg, by = c("x", "y"))
+     
+     invisible(self)
+   },
+   
+   print = function()
+   {
+     print(self$roi)
+   },
+   
+   plot = function(bg = NULL)
+   {
+     # If no background was passed, use an empty ggplot2 object
+     if (is.null(bg))
+     {
+       bg <- ggplot()
+     }
+     
+     # Calculate positions of raster lines
+     xs <- seq(min(self$roi$x) - self$bin_width / 2,
+               max(self$roi$x) + self$bin_width / 2, self$bin_width)
+     ys <- seq(min(self$roi$y) - self$bin_width / 2,
+               max(self$roi$y) + self$bin_width / 2, self$bin_width)
+     
+     print(
+       bg +
+         geom_tile(aes(x, y), self$roi, alpha = .25, fill = "#373b41") +
+         geom_vline(xintercept = xs, color = "#c5c8c6") +
+         geom_hline(yintercept = ys, color = "#c5c8c6") +
+         coord_fixed() +
+         theme_classic()
+     )
+   }
+  )
+)
+
+#' @importFrom purrr map
+#' @export
+roi_analysis <- function(roi, ..., x, y, time = TRUE)
 {
-  # dirty workaround here: we put x.max, y.max and roi into the global
-  # environment because that's where ggplot's aes looks for them
-  .x.min.movhm <<- round(margins[1] / blocksize)
-  .y.min.movhm <<- round(margins[2] / blocksize)
-  .x.max.movhm <<- round(margins[3] / blocksize)
-  .y.max.movhm <<- round(margins[4] / blocksize)
-  .roi.movhm <<- roi
-  
-  p <- ggplot() +
-    #template() +
-    # Grid
-    geom_vline(xintercept = seq(.x.min.movhm + .5, .x.max.movhm, 1),
-               colour = "red", alpha = .25) +
-    geom_hline(yintercept = seq(.y.min.movhm + .5, .y.max.movhm, 1),
-               colour = "red", alpha = .25) +
-    # Coloured grid
-    geom_rect(aes(xmin = seq(.x.min.movhm + .5, .x.max.movhm - .5, 2),
-                  ymin = .y.min.movhm,
-                  xmax = seq(.x.min.movhm + 1.5, .x.max.movhm + .5, 2),
-                  ymax = .y.max.movhm),
-              fill = "red", alpha = .05) +
-    geom_rect(aes(xmin = .x.min.movhm,
-                  ymin = seq(.y.min.movhm + .5, .y.max.movhm - .5, 2),
-                  xmax = .x.max.movhm,
-                  ymax = seq(.y.min.movhm + 1.5, .y.max.movhm + .5, 2)),
-              fill = "red", alpha = .05) +
-    scale_x_continuous(breaks = seq(.x.min.movhm, .x.max.movhm, 1),
-                       limits = c(.x.min.movhm, .x.max.movhm),
-                       expand = c(0, 0)) +
-    scale_y_continuous(breaks = seq(.y.min.movhm, .y.max.movhm, 1),
-                       limits = c(.y.min.movhm, .y.max.movhm),
-                       expand = c(0, 0)) +
-    coord_fixed() +
-    theme_bw() +
-    theme(axis.ticks = element_blank(),
-          axis.title = element_blank(),
-          panel.background = element_blank(),
-          panel.grid = element_blank(),
-          panel.border = element_blank())
-  
-  if(!is.null(roi))
-  {
-    p <- p +
-      geom_rect(aes(xmin = .roi.movhm[[1]] - .5, ymin = .roi.movhm[[2]] - .5,
-                    xmax = .roi.movhm[[1]] + .5, ymax = .roi.movhm[[2]] + .5),
-                fill = "blue", alpha = .5)
-    
-  }
-  
-  print(p)
+  map(list(...), roi_analysis_, x, y, roi$roi, roi$bin_width, time)
 }
 
-#' Execute a ROI analysis on movement data
-#' 
-#' @importFrom plyr round_any
-#' @import dplyr
-#' 
-#' @param ... lists of two-column data frames with x- and y-values
-#' @param x name of the column containing x-values in the data frames in
-#'   \code{...} (string)
-#' @param y name of the column containing y-values in the data frames in
-#'   \code{...} (string)
-#' @param roi a two-column data frame with x- and y-values specifying what cells
-#'   should be included in the ROI.
-#' @param blocksize scaling factor
-#' @param margins numeric vector of length 4 containing the margins (xmin, ymin,
-#'   xmax, ymax)
-#' @param consider.time logical indicating whether to count one subject multiple
-#'   times in one cell
-#' @export
-roi.analysis <- function(..., x, y, roi, blocksize, margins,
-                         consider.time = FALSE)
+#' @importFrom dplyr filter inner_join
+#' @importFrom purrr map
+roi_analysis_ <- function(l, x, y, roi, bin_width, time)
 {
-  objects <- list(...)
+  bins <- map(l, bin_2d, x, y, bin_width)
   
-  if (length(objects) == 0)
+  if (time)
   {
-    stop("You need to specify at least one list of data frames to ...")
+    # Filter rows which occur in both roi and raster w/ f > 0, then sum total f
+    map_dbl(bins, ~ sum(inner_join(roi, filter(.x, f > 0), by = c("x", "y"))$f))
   }
-  
-  # Round roi values due to R's problems with numeric values (see FAQ 7.31)
-  if (blocksize < 1)
+  else
   {
-    roi$x <- round_any(roi$x, blocksize)
-    roi$y <- round_any(roi$y, blocksize)
+    # Count number of cells which occur in both roi and raster w/ b == 1
+    map_dbl(bins, ~ nrow(inner_join(roi, filter(.x, b == 1), by = c("x", "y"))))
   }
-  
-  lapply(objects, sapply, function(data) {
-    # Compute raster data frame for Ss
-    raster <- count.pos(data, x = x, y = y, blocksize = blocksize,
-                        margins = margins, consider.time = consider.time,
-                        time.transformation = NULL)
-    
-    if (consider.time)
-    {
-      # Filter rows which occur in both roi and raster w/ f > 0
-      tpos <- inner_join(roi, filter(raster, f > 0), by = c("x", "y"))
-      
-      # Return sum of time * position frequencies
-      sum(tpos$f)
-    } else
-    {
-      # Count number of cells which occur in both roi and raster w/ f == 1
-      nrow(inner_join(roi, filter(raster, f == 1), by = c("x", "y")))
-    }
-  })
 }
