@@ -5,14 +5,16 @@ Version: 1.2.0.9000
 Date: 2014-10-31
 Author: Daniel Gromer, Max Kinateder
 Maintainer: Daniel Gromer <daniel.gromer@uni-wuerzburg.de>
-Depends:
+Depends: 
     R (>= 3.0.0)
-Imports:
+Imports: 
     dplyr (>= 0.3),
     ggplot2 (>= 0.9.3),
-    RColorBrewer
+    RColorBrewer,
+    Rcpp
 Description: This package provides functions that allow graphical and
     inferential analysis of movement data, such as human evacuation behavior in
     safety science.
 License: GPL (>= 2)
 URL: http://github.com/dgromer/movhm
+LinkingTo: Rcpp

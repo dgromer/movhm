@@ -1,12 +1,6 @@
 #' ROI Class
 #' 
 #' @docType class
-#' @section Methods
-#' \describe{
-#'   \item{\code{add(xmin, ymin, xmax, ymax)}}{Add an area to the ROI}
-#'   \item{\code{plot(bg = NULL)}}{Plot the current ROI (on top of an optional
-#'   background)}
-#' }
 #' @importFrom R6 R6Class
 #' @examples 
 #' # Create a new roi with a bin width of 1
@@ -99,3 +93,11 @@ roi_analysis_ <- function(l, x, y, roi, bin_width, time)
     map_dbl(bins, ~ nrow(inner_join(roi, filter(.x, b == 1), by = c("x", "y"))))
   }
 }
+
+# @section Methods
+# 
+# \describe{
+#   \item{\code{add(xmin, ymin, xmax, ymax)}}{Add an area to the ROI}
+#   \item{\code{plot(bg = NULL)}}{Plot the current ROI (on top of an optional
+#   background)}
+# }
