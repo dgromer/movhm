@@ -1,6 +1,6 @@
 #' A blank theme for heatmaps
 #' 
-#' @import ggplot2
+#' @importFrom ggplot2 theme_bw theme element_blank
 #' 
 #' @param base_size base font size
 #' @param base_family base font family

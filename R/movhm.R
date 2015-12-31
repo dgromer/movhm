@@ -6,19 +6,18 @@
 #' @importFrom Rcpp sourceCpp
 NULL
 
-#' Create a heatmap based on movement data
+#' Two-dimensional binning for group movement data
 #' 
 #' @importFrom magrittr %>%
-#' @importFrom plyr round_any
 #' @importFrom purrr map reduce
-#' @importFrom dplyr left_join
-#' @import ggplot2
+#' @importFrom ggplot2 aes_string ggplot geom_raster scale_fill_gradientn
+#'   coord_fixed
 #' 
-#' @param l A list of named lists or data frames containing x- and y-values
+#' @param l A list of data frames or named lists containing x- and y-values
 #' @param x character string indicating the name of the variable holding
-#'   x-values in the lists or data frames in \code{l}.
-#' @param x character string indicating the name of the variable holding
-#'   y-values in the lists or data frames in \code{l}.
+#'   x-values in the data frames or lists in \code{l}.
+#' @param y character string indicating the name of the variable holding
+#'   y-values in the data frames or lists in \code{l}.
 #' @param bin_width numeric indicating the size of the bins
 #' @param margins numeric vector of length 4 indicating the margins (xmin, ymin,
 #'   xmax, ymax)
@@ -26,23 +25,21 @@ NULL
 #'   times in one cell, depending on the time the subject was inside the cell.
 #' @param time_transform if \code{time} is \code{TRUE}, then
 #'   \code{time_transform} specifies the function to be applied to the
-#'   position * time frequencies (default is \code{sqrt}). Can also be
-#'   \code{NULL}.
-#' @param drop logical indicating whether to set empty bins to NA instead of 0
-#'   (default: \code{TRUE}).
+#'   position * time frequencies, e.g. \code{sqrt}. 
+#' @param drop logical indicating whether to set empty bins to NA instead of 0 
+#'   (default: \code{TRUE}). This is useful when plotting, so empty bins can be
+#'   plotted transparent.
 #' @param plot logical indicating if the heatmap should be plotted
-#' @return A data frame with x, y and f (freqency) columns ready for plotting
-#'   with ggplot2
+#' @return A data frame with x, y and f (freqency) columns
 #' @export
 #' @examples
-#' library(dplyr)
-#' library(ggplot2)
-#' 
 #' data(movdat)
 #' 
-#' movhm(movdat, x = "cart_x", y = "cart_y", bin_width = 50,
-#'       margins = c(-750, -2000, 100, 1550)) %>%        
-#'   ggplot(aes(x, y, fill = f)) +
+#' bins <- movhm(movdat, x = "cart_x", y = "cart_y", bin_width = 50,
+#'               margins = c(-750, -2000, 100, 1550))
+#'
+#' library(ggplot2)
+#' ggplot(bins, aes(x, y, fill = f)) +
 #'   geom_raster() +
 #'   scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
 #'   coord_fixed() +
@@ -57,7 +54,7 @@ movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
   }
   else
   {
-    margins <- round_any(margins, bin_width)
+    margins <- round_bins(margins, bin_width)
   }
   
   # Compute 2d raster
@@ -65,15 +62,13 @@ movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
     l %>%
     # Apply 2d binning to each case
     map(bin_2d, x, y, bin_width, margins, time) %>%
-    # Add each case's raster to the empty raster
-    #map(right_join, y = empty_raster(bin_width, margins), by = c("x", "y")) %>%
     # Sum up data of all cases
     reduce(collapse_bins)
   
   if (!is.null(time_transform))
   {
     # Apply a transformation to the frequency of visited cells
-    bins$f_transform <- do.call(time_transform, list(bins$f))
+    bins$f<- do.call(time_transform, list(bins$f))
   }
   
   # Set non-visited cells to NA
@@ -96,7 +91,17 @@ movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
   }
 }
 
-#' @importFrom plyr round_any
+#' movhm_diff
+#' 
+#' @inheritParams movhm
+#' @param lx A list of data frames or named lists containing x- and y-values
+#' @param ly A list of data frames or named lists containing x- and y-values
+#' @param difference character string indicating whether absolute
+#'   (\code{"absolute"}) or relative (\code{"relative"}) frequency differences
+#'   should be calculated.
+#' 
+#' @importFrom ggplot2 aes_string ggplot geom_raster scale_fill_gradientn
+#'   coord_fixed
 #' @importFrom purrr flatten map
 #' @export
 movhm_diff <- function(lx, ly, x, y, bin_width,
@@ -112,21 +117,24 @@ movhm_diff <- function(lx, ly, x, y, bin_width,
   }
   else
   {
-    margins <- round_any(margins, bin_width)
+    margins <- round_bins(margins, bin_width)
   }
   
   bins_list <- map(list(lx, ly), movhm, x, y, bin_width, margins,
                    time_transform = time_transform)
   
-  bins <- bins[[1]]
-  bins$f <- diff_bins(bins[[1]], bins[[2]], length(lx), length(ly), difference)
+  bins <- bins_list[[1]]
+  bins$f <- diff_bins(bins_list[[1]]$f, bins_list[[2]]$f, length(lx),
+                      length(ly), difference)
   
   # Return either a plot or data frame
   if (plot)
   {
+    limit <- max(abs(bins$f), na.rm = TRUE)
+    
     ggplot(bins, aes_string("x", "y", fill = "f")) +
       geom_raster() +
-      scale_fill_gradientn(colours = scale_Spectral,
+      scale_fill_gradientn(limits = c(-limit, limit), colours = scale_Spectral,
                            na.value = rgb(0, 0, 0, 0)) +
       coord_fixed()
   }
@@ -136,20 +144,27 @@ movhm_diff <- function(lx, ly, x, y, bin_width,
   }
 }
 
-#' @importFrom dplyr between filter group_by right_join summarize ungroup rename_ select_
+#' @importFrom dplyr between filter group_by right_join summarize ungroup
+#'   rename_ select_
 #' @importFrom magrittr %>%
 bin_2d <- function(.data, x, y, bin_width, margins, time)
 {
   bins <-
     .data %>%
+    # Drop all columns except x and y values
     select_(.dots = c(x, y)) %>%
+    # Rename columns to "x" and "y"
     rename_(.dots = setNames(c(x, y), c("x", "y"))) %>%
+    # Drop values that are out of margins
     filter(between(x, margins[1], margins[3]),
            between(y, margins[2], margins[4])) %>%
+    # Put all values into bins
     round_bins(bin_width) %>%
+    # Calculate the frequencies of each bin using group_by and summarize
     group_by(x, y) %>%
     summarize(f = n()) %>%
     ungroup() %>%
+    # Add the frequencies to the empty raster
     right_join(y = empty_raster(bin_width, margins), by = c("x", "y"))
   
   if (!time)

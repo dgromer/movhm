@@ -4,14 +4,19 @@
 \name{ROI}
 \alias{ROI}
 \title{ROI Class}
-\format{\preformatted{Class 'R6ClassGenerator' <environment: 0x35fb558> 
- - attr(*, "name")= chr "ROI_generator"
-}}
+\format{A \code{\link{ROI}} generator object}
 \usage{
-ROI
+\code{ROI$new(bin_width)}
 }
 \description{
-ROI Class
+Class for defining a ROI (area of interest) for use with \code{roi_analysis}.
+}
+\section{Methods}{
+
+\describe{
+  \item{\code{add(xmin, ymin, xmax, ymax)}}{Add a region to the ROI.}
+  \item{\code{plot(bg = NULL)}}{Plot the ROI (to an optional background).}
+}
 }
 \examples{
 # Create a new roi with a bin width of 1

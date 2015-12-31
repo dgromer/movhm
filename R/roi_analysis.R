@@ -1,9 +1,21 @@
 #' ROI Class
 #' 
-#' @docType class
+#' Class for defining a ROI (area of interest) for use with \code{roi_analysis}.
+#' 
+#' @importFrom dplyr full_join
+#' @importFrom ggplot2 aes ggplot geom_tile geom_hline geom_vline coord_fixed
+#'   theme_classic
 #' @importFrom R6 R6Class
+#' @docType class
+#' @usage \code{ROI$new(bin_width)}
+#' @format A \code{\link{ROI}} generator object
+#' @section Methods:
+#' \describe{
+#'   \item{\code{add(xmin, ymin, xmax, ymax)}}{Add a region to the ROI.}
+#'   \item{\code{plot(bg = NULL)}}{Plot the ROI (to an optional background).}
+#' }
 #' @examples 
-#' # Create a new roi with a bin width of 1
+#' # Create a new ROI with a bin width of 1
 #' roi <- ROI$new(1)
 #' 
 #' # Add the area from 0/0 to 2/4 to the ROI and view it
@@ -15,64 +27,82 @@
 #' roi$plot()
 #' @export
 ROI <- R6Class("ROI",
+               
   public = list(
    
-   roi = data.frame(x = numeric(0), y = numeric(0)),
-   binwidth = NULL,
+    # roi holds the positions of the ROI as a data frame
+    roi = data.frame(x = numeric(0), y = numeric(0)),
+    
+    # Width of the bins
+    bin_width = NULL,
    
-   initialize = function(bin_width)
-   {
-     if (!missing(bin_width)) self$bin_width <- bin_width
-   },
+    initialize = function(bin_width)
+    {
+      if (!missing(bin_width)) self$bin_width <- bin_width
+    },
    
-   # Add a rectangle to the current roi
-   add = function(xmin, ymin, xmax, ymax)
-   {
-     x <- seq(xmin, xmax, self$bin_width)
-     y <- seq(ymin, ymax, self$bin_width)
-     
-     nreg <- data.frame(x = rep(x, each = length(y)), y = rep(y, length(x)))
-     
-     self$roi <- full_join(self$roi, nreg, by = c("x", "y"))
-     
-     invisible(self)
-   },
-   
-   print = function()
-   {
-     print(self$roi)
-   },
-   
-   plot = function(bg = NULL)
-   {
-     # If no background was passed, use an empty ggplot2 object
-     if (is.null(bg))
-     {
-       bg <- ggplot()
-     }
-     
-     # Calculate positions of raster lines
-     xs <- seq(min(self$roi$x) - self$bin_width / 2,
-               max(self$roi$x) + self$bin_width / 2, self$bin_width)
-     ys <- seq(min(self$roi$y) - self$bin_width / 2,
-               max(self$roi$y) + self$bin_width / 2, self$bin_width)
-     
-     print(
-       bg +
-         geom_tile(aes(x, y), self$roi, alpha = .25, fill = "#373b41") +
-         geom_vline(xintercept = xs, color = "#c5c8c6") +
-         geom_hline(yintercept = ys, color = "#c5c8c6") +
-         coord_fixed() +
-         theme_classic()
-     )
-   }
+    # Add a rectangle to the current roi
+    add = function(xmin, ymin, xmax, ymax)
+    {
+      # Round coordinates to bin width
+      xmin <- round_bins(xmin, self$bin_width)
+      ymin <- round_bins(ymin, self$bin_width)
+      xmax <- round_bins(xmax, self$bin_width)
+      ymax <- round_bins(ymax, self$bin_width)
+      
+      x <- seq(xmin, xmax, self$bin_width)
+      y <- seq(ymin, ymax, self$bin_width)
+      
+      nreg <- data.frame(x = rep(x, each = length(y)), y = rep(y, length(x)))
+      
+      self$roi <- full_join(self$roi, nreg, by = c("x", "y"))
+      
+      invisible(self)
+    },
+    
+    print = function()
+    {
+      print(self$roi)
+    },
+    
+    plot = function(bg = NULL)
+    {
+      # If no background was passed, use an empty ggplot2 object
+      if (is.null(bg))
+      {
+        bg <- ggplot()
+      }
+      
+      # Calculate positions of raster lines
+      xs <- seq(min(self$roi$x) - self$bin_width / 2,
+                max(self$roi$x) + self$bin_width / 2, self$bin_width)
+      ys <- seq(min(self$roi$y) - self$bin_width / 2,
+                max(self$roi$y) + self$bin_width / 2, self$bin_width)
+      
+      print(
+        bg +
+          geom_tile(aes(x, y), self$roi, alpha = .25, fill = "#373b41") +
+          geom_vline(xintercept = xs, color = "#c5c8c6") +
+          geom_hline(yintercept = ys, color = "#c5c8c6") +
+          coord_fixed() +
+          theme_classic()
+      )
+    }
   )
 )
 
+#' ROI analysis for group movement data
+#' 
+#' 
 #' @importFrom purrr map
 #' @export
 roi_analysis <- function(roi, ..., x, y, time = TRUE)
 {
+  if (!inherits(roi, c("ROI", "R6")))
+  {
+    stop("Argument 'roi' must be of class ROI")
+  }
+  
   map(list(...), roi_analysis_, x, y, roi$roi, roi$bin_width, time)
 }
 
@@ -93,11 +123,3 @@ roi_analysis_ <- function(l, x, y, roi, bin_width, time)
     map_dbl(bins, ~ nrow(inner_join(roi, filter(.x, b == 1), by = c("x", "y"))))
   }
 }
-
-# @section Methods
-# 
-# \describe{
-#   \item{\code{add(xmin, ymin, xmax, ymax)}}{Add an area to the ROI}
-#   \item{\code{plot(bg = NULL)}}{Plot the current ROI (on top of an optional
-#   background)}
-# }
