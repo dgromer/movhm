@@ -33,8 +33,6 @@ NULL
 #' @return A data frame with x, y and f (freqency) columns
 #' @export
 #' @examples
-#' data(movdat)
-#'
 #' bins <- movhm(movdat, x = "cart_x", y = "cart_y", bin_width = 50,
 #'               margins = c(-750, -2000, 100, 1550))
 #'
@@ -66,7 +64,7 @@ movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
     # Sum up data of all cases
     reduce(collapse_bins)
 
-  if (!is.null(time_transform))
+  if (time && !is.null(time_transform))
   {
     # Apply a transformation to the frequency of visited cells
     bins$f<- do.call(time_transform, list(bins$f))
@@ -123,7 +121,7 @@ movhm_diff <- function(lx, ly, x, y, bin_width,
   }
 
   # Calculate heatmap data for both lx and ly
-  bins_list <- map(list(lx, ly), movhm, x, y, bin_width, margins,
+  bins_list <- map(list(lx, ly), movhm, x, y, bin_width, margins, time = time,
                    time_transform = time_transform)
 
   # Calculate difference of heatmap data
