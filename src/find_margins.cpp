@@ -10,10 +10,10 @@ NumericVector find_margins(List l, String x, String y, double bin_width)
   int n = l.size();
   
   // Initialize variables holding margins with sensible values
-  double xmin = as<NumericVector>(as<List>(l[0])[x])[0];
-  double ymin = as<NumericVector>(as<List>(l[0])[y])[0];
-  double xmax = as<NumericVector>(as<List>(l[0])[x])[0];
-  double ymax = as<NumericVector>(as<List>(l[0])[y])[0];
+  double xmin = as<NumericVector>(as<DataFrame>(l[0])[x])[0];
+  double ymin = as<NumericVector>(as<DataFrame>(l[0])[y])[0];
+  double xmax = as<NumericVector>(as<DataFrame>(l[0])[x])[0];
+  double ymax = as<NumericVector>(as<DataFrame>(l[0])[y])[0];
   
   // Iterate through all lists in l
   for (int i = 0; i < n; i++)

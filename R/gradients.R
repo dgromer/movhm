@@ -1,9 +1,9 @@
 #' Colour gradients
-#' 
+#'
 #' @description
 #' These colour gradients are used in conjunction with ggplot2's
 #' \code{scale_fill_gradientn()}. Available gradients are
-#' 
+#'
 #' \describe{
 #'   \item{\code{scale_Blues}}{
 #'   A colour gradient for heatmaps, from white to blue
@@ -28,9 +28,9 @@
 #'   defines how widely the colours space towards both ends.
 #'   }
 #' }
-#' 
+#'
 #' @seealso \code{\link{scale_fill_gradientn}}
-#' 
+#'
 #' @name movhmcolgradients
 NULL
 
@@ -38,17 +38,17 @@ NULL
 #' @rdname movhmcolgradients
 scale_RdGrBu <- colorRampPalette(rainbow(12, end = .65))(100)
 
-#' @import RColorBrewer
+#' @importFrom RColorBrewer brewer.pal
 #' @export
 #' @rdname movhmcolgradients
 scale_Blues <- colorRampPalette(brewer.pal(9, "Blues"), bias = 1.5)(100)
 
-#' @import RColorBrewer
+#' @importFrom RColorBrewer brewer.pal
 #' @export
 #' @rdname movhmcolgradients
 scale_RdBu <- colorRampPalette(brewer.pal(11, "RdBu"))(100)
 
-#' @import RColorBrewer
+#' @importFrom RColorBrewer brewer.pal
 #' @export
 #' @rdname movhmcolgradients
 scale_RdBu_bias <- function(bias = 1.5)
@@ -57,12 +57,12 @@ scale_RdBu_bias <- function(bias = 1.5)
     colorRampPalette(brewer.pal(9, "Blues"), bias = bias)(50))
 }
 
-#' @import RColorBrewer
+#' @importFrom RColorBrewer brewer.pal
 #' @export
 #' @rdname movhmcolgradients
 scale_Spectral <- colorRampPalette(brewer.pal(11, "Spectral"))(100)
 
-#' @import RColorBrewer
+#' @importFrom RColorBrewer brewer.pal
 #' @export
 #' @rdname movhmcolgradients
 scale_Spectral_bias <- function(bias = 1.5)

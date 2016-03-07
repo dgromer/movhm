@@ -1,5 +1,5 @@
 #' movhm
-#' 
+#'
 #' @docType package
 #' @name movhm_package
 #' @useDynLib movhm
@@ -7,12 +7,12 @@
 NULL
 
 #' Two-dimensional binning for group movement data
-#' 
+#'
 #' @importFrom magrittr %>%
 #' @importFrom purrr map reduce
 #' @importFrom ggplot2 aes_string ggplot geom_raster scale_fill_gradientn
 #'   coord_fixed
-#' 
+#'
 #' @param l A list of data frames or named lists containing x- and y-values
 #' @param x character string indicating the name of the variable holding
 #'   x-values in the data frames or lists in \code{l}.
@@ -25,8 +25,8 @@ NULL
 #'   times in one cell, depending on the time the subject was inside the cell.
 #' @param time_transform if \code{time} is \code{TRUE}, then
 #'   \code{time_transform} specifies the function to be applied to the
-#'   position * time frequencies, e.g. \code{sqrt}. 
-#' @param drop logical indicating whether to set empty bins to NA instead of 0 
+#'   position * time frequencies, e.g. \code{sqrt}.
+#' @param drop logical indicating whether to set empty bins to NA instead of 0
 #'   (default: \code{TRUE}). This is useful when plotting, so empty bins can be
 #'   plotted transparent.
 #' @param plot logical indicating if the heatmap should be plotted
@@ -34,7 +34,7 @@ NULL
 #' @export
 #' @examples
 #' data(movdat)
-#' 
+#'
 #' bins <- movhm(movdat, x = "cart_x", y = "cart_y", bin_width = 50,
 #'               margins = c(-750, -2000, 100, 1550))
 #'
@@ -44,6 +44,7 @@ NULL
 #'   scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
 #'   coord_fixed() +
 #'   theme_movhm()
+#'
 movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
                   time = TRUE, time_transform = NULL, plot = FALSE)
 {
@@ -56,7 +57,7 @@ movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
   {
     margins <- round_bins(margins, bin_width)
   }
-  
+
   # Compute 2d raster
   bins <-
     l %>%
@@ -64,26 +65,27 @@ movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
     map(bin_2d, x, y, bin_width, margins, time) %>%
     # Sum up data of all cases
     reduce(collapse_bins)
-  
+
   if (!is.null(time_transform))
   {
     # Apply a transformation to the frequency of visited cells
     bins$f<- do.call(time_transform, list(bins$f))
   }
-  
+
   # Set non-visited cells to NA
   if (drop)
   {
     bins[which(bins$f == 0), "f"] <- NA
   }
-  
+
   # Return either a plot or data frame
   if (plot)
   {
     ggplot(bins, aes_string("x", "y", fill = "f")) +
       geom_raster() +
       scale_fill_gradientn(colours = scale_Blues, na.value = rgb(0, 0, 0, 0)) +
-      coord_fixed()
+      coord_fixed() +
+      theme_movhm()
   }
   else
   {
@@ -92,14 +94,14 @@ movhm <- function(l, x, y, bin_width, margins = NULL, drop = TRUE,
 }
 
 #' movhm_diff
-#' 
+#'
 #' @inheritParams movhm
 #' @param lx A list of data frames or named lists containing x- and y-values
 #' @param ly A list of data frames or named lists containing x- and y-values
 #' @param difference character string indicating whether absolute
 #'   (\code{"absolute"}) or relative (\code{"relative"}) frequency differences
 #'   should be calculated.
-#' 
+#'
 #' @importFrom ggplot2 aes_string ggplot geom_raster scale_fill_gradientn
 #'   coord_fixed
 #' @importFrom purrr flatten map
@@ -109,7 +111,7 @@ movhm_diff <- function(lx, ly, x, y, bin_width,
                        time = TRUE, time_transform = NULL, plot = FALSE)
 {
   difference <- match.arg(difference)
-  
+
   # Find margins if they were not passed, otherwise round passed margins
   if (is.null(margins))
   {
@@ -119,24 +121,27 @@ movhm_diff <- function(lx, ly, x, y, bin_width,
   {
     margins <- round_bins(margins, bin_width)
   }
-  
+
+  # Calculate heatmap data for both lx and ly
   bins_list <- map(list(lx, ly), movhm, x, y, bin_width, margins,
                    time_transform = time_transform)
-  
+
+  # Calculate difference of heatmap data
   bins <- bins_list[[1]]
   bins$f <- diff_bins(bins_list[[1]]$f, bins_list[[2]]$f, length(lx),
                       length(ly), difference)
-  
+
   # Return either a plot or data frame
   if (plot)
   {
     limit <- max(abs(bins$f), na.rm = TRUE)
-    
+
     ggplot(bins, aes_string("x", "y", fill = "f")) +
       geom_raster() +
       scale_fill_gradientn(limits = c(-limit, limit), colours = scale_Spectral,
                            na.value = rgb(0, 0, 0, 0)) +
-      coord_fixed()
+      coord_fixed() +
+      theme_movhm()
   }
   else
   {
@@ -166,12 +171,12 @@ bin_2d <- function(.data, x, y, bin_width, margins, time)
     ungroup() %>%
     # Add the frequencies to the empty raster
     right_join(y = empty_raster(bin_width, margins), by = c("x", "y"))
-  
+
   if (!time)
   {
     bins[which(bins$f > 0), "f"] <- 1
   }
-  
+
   bins
 }
 
@@ -192,10 +197,10 @@ collapse_bins <- function(x, y)
   # Set NAs to 0
   x[is.na(x$f), "f"] <- 0
   y[is.na(y$f), "f"] <- 0
-  
+
   # Add frequencies
   x$f <- x$f + y$f
-  
+
   x
 }
 
@@ -212,6 +217,6 @@ round_bins.default <- function(x, bin_width, ...)
 round_bins.data.frame <- function(data, bin_width, ...)
 {
   data[] <- lapply(data, round_bins, bin_width, ...)
-  
+
   data
 }
